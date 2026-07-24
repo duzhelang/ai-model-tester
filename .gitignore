@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.env
+*.log
+config.yaml
+keys.js
+quick_test.txt
+test_cases.md
+测试.txt

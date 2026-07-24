@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 模型连通性测试工具</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: "Microsoft YaHei", sans-serif; background: #f5f7fa; min-height: 100vh; padding: 20px; }
+.container { max-width: 900px; margin: 0 auto; }
+
+.header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white; padding: 24px; border-radius: 12px; margin-bottom: 20px;
+  text-align: center;
+}
+.header h1 { font-size: 22px; margin-bottom: 6px; }
+.header p { font-size: 13px; opacity: 0.85; }
+
+.card {
+  background: white; border-radius: 12px; padding: 20px;
+  margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.card-title {
+  font-size: 14px; font-weight: 600; color: #555; margin-bottom: 10px;
+  padding-bottom: 8px; border-bottom: 1px solid #f0f0f0;
+}
+
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-size: 13px; color: #555; margin-bottom: 6px; font-weight: 500; }
+.form-group input, .form-group textarea {
+  width: 100%; padding: 10px 12px; border: 1px solid #ddd;
+  border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.2s;
+}
+.form-group input:focus, .form-group textarea:focus { border-color: #667eea; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-group textarea {
+  resize: vertical; min-height: 60px;
+  font-family: Consolas, "Courier New", monospace; font-size: 13px;
+}
+
+.btn {
+  padding: 12px 24px; border: none; border-radius: 8px; font-size: 14px;
+  font-weight: 600; cursor: pointer; transition: all 0.2s; width: 100%;
+}
+.btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(102,126,234,0.4); }
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+.btn-sm { padding: 8px 16px; font-size: 13px; width: auto; }
+.btn-secondary { background: #f0f2f5; color: #555; }
+.btn-danger { background: #ff4d4f; color: white; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+
+.badge {
+  display: inline-block; padding: 2px 8px; border-radius: 4px;
+  font-size: 11px; font-weight: 500; margin: 2px 4px 2px 0;
+}
+.badge-url { background: #e6f7ff; color: #1890ff; border: 1px solid #91d5ff; }
+.badge-model { background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
+.badge-key { background: #fff7e6; color: #fa8c16; border: 1px solid #ffd591; }
+.badge-warn { background: #fff7e6; color: #fa8c16; }
+
+.provider-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 8px; margin-bottom: 14px;
+}
+.provider-btn {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 12px 8px; border: 2px solid #e8e8e8; border-radius: 10px;
+  cursor: pointer; transition: all 0.2s; background: white; text-align: center;
+}
+.provider-btn:hover { border-color: #667eea; background: #f8f9ff; }
+.provider-btn.active { border-color: #667eea; background: #667eea; color: white; }
+.provider-btn .name { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+.provider-btn .count { font-size: 11px; opacity: 0.7; }
+
+.result-card { padding: 16px; border-radius: 8px; margin-bottom: 10px; }
+.result-card.success { background: #f6ffed; border: 1px solid #b7eb8f; }
+.result-card.error { background: #fff2f0; border: 1px solid #ffa39e; }
+.result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.result-status { font-size: 13px; font-weight: 600; padding: 3px 10px; border-radius: 6px; }
+.result-status.success { background: #52c41a; color: white; }
+.result-status.error { background: #ff4d4f; color: white; }
+.result-info { font-size: 13px; color: #666; line-height: 1.8; }
+.result-info .label { color: #888; }
+.result-info .value { color: #333; font-weight: 500; }
+.result-info .error-msg { color: #ff4d4f; font-weight: 500; }
+.result-info .success-msg { color: #52c41a; font-weight: 500; }
+.response-preview {
+  margin-top: 8px; padding: 8px; background: white; border-radius: 6px;
+  font-size: 12px; color: #666; max-height: 80px; overflow-y: auto; border: 1px solid #eee;
+}
+
+.spinner {
+  display: inline-block; width: 16px; height: 16px; margin-right: 6px;
+  border: 2px solid rgba(255,255,255,0.3); border-top-color: white;
+  border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.summary-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+.summary-item { text-align: center; padding: 14px; border-radius: 10px; }
+.summary-item .num { font-size: 28px; font-weight: 700; }
+.summary-item .lbl { font-size: 12px; margin-top: 4px; opacity: 0.8; }
+.summary-total { background: #f0f2f5; color: #333; }
+.summary-ok { background: #f6ffed; color: #52c41a; }
+.summary-fail { background: #fff2f0; color: #ff4d4f; }
+.summary-rate { background: #e6f7ff; color: #1890ff; }
+
+.provider-group { margin-bottom: 16px; }
+.provider-group-title {
+  font-size: 15px; font-weight: 600; color: #333; margin-bottom: 10px;
+  padding: 8px 12px; background: #f8f9fa; border-radius: 8px;
+  display: flex; align-items: center; gap: 8px;
+}
+.pg-tag { font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 500; }
+.pg-tag.ok { background: #b7eb8f; color: #135200; }
+.pg-tag.fail { background: #ffa39e; color: #820014; }
+.pg-tag.partial { background: #ffe58f; color: #614700; }
+
+.progress-bar-wrap { width: 100%; height: 6px; background: #f0f0f0; border-radius: 3px; margin: 10px 0; overflow: hidden; }
+.progress-bar { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); border-radius: 3px; transition: width 0.3s; }
+
+.tabs { display: flex; margin-bottom: 16px; border-bottom: 1px solid #e8e8e8; }
+.tab { padding: 8px 16px; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; margin-right: 8px; }
+.tab.active { color: #667eea; border-bottom-color: #667eea; font-weight: 600; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+.collapse-toggle {
+  display: flex; align-items: center; justify-content: space-between;
+  cursor: pointer; padding: 10px 0; font-size: 13px; color: #667eea; font-weight: 500;
+}
+.collapse-toggle:hover { color: #764ba2; }
+.collapse-toggle .arrow { transition: transform 0.2s; }
+.collapse-toggle .arrow.open { transform: rotate(90deg); }
+.collapse-body { display: none; }
+.collapse-body.open { display: block; }
+
+.config-list { max-height: 200px; overflow-y: auto; margin-bottom: 12px; }
+.config-item {
+  padding: 8px 12px; border: 1px solid #eee; border-radius: 6px;
+  margin-bottom: 6px; font-size: 12px; display: flex; justify-content: space-between;
+  align-items: center; cursor: pointer; transition: background 0.2s;
+}
+.config-item:hover { background: #f8f9fa; }
+.config-item.active { background: #e6f7ff; border-color: #91d5ff; }
+.config-item .ci-name { font-weight: 600; color: #333; }
+.config-item .ci-info { color: #888; font-size: 11px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>AI 模型连通性测试工具</h1>
+    <p>可配置、可扩展的一键测试平台 | 支持动态添加提供商和模型</p>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('manual')">手动测试</div>
+    <div class="tab" onclick="switchTab('batch')">批量测试</div>
+  </div>
+
+  <!-- ==================== 手动测试 ==================== -->
+  <div id="tab-manual" class="tab-content active">
+    <div class="card">
+      <div class="card-title">粘贴自动识别</div>
+      <div class="form-group">
+        <textarea id="manualPaste" rows="3" placeholder="粘贴任意配置文本，自动提取 API地址 / Key / 模型名&#10;支持：YAML配置、裸Key、URL+Key+模型组合"></textarea>
+        <div style="font-size:11px; color:#999; margin-top:4px;" id="manualParsedHint"></div>
+      </div>
+      <div class="btn-row" style="margin-bottom:0">
+        <button class="btn btn-secondary btn-sm" onclick="clearManualPaste()">清空</button>
+        <button class="btn btn-primary btn-sm" onclick="doManualPasteTest()">测试粘贴内容</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">手动输入</div>
+      <div class="form-group">
+        <label>API 地址</label>
+        <input type="text" id="manualUrl" placeholder="https://openrouter.ai/api/v1/chat/completions">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>模型名称</label>
+          <input type="text" id="manualModel" placeholder="google/gemma-4-26b-a4b-it:free">
+        </div>
+        <div class="form-group">
+          <label>超时 (秒)</label>
+          <input type="number" id="manualTimeout" value="15" min="5" max="120">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>API Key</label>
+        <input type="text" id="manualKey" placeholder="sk-...">
+      </div>
+      <button class="btn btn-primary" id="manualTestBtn" onclick="doManualTest()">测试连通性</button>
+    </div>
+    <!-- 常用模型快速选择 -->
+    <div id="manualResult"></div>
+  </div>
+
+  <!-- ==================== 批量测试 ==================== -->
+  <div id="tab-batch" class="tab-content">
+    <!-- 提供商选择 + 测试 -->
+    <div class="card">
+      <div class="card-title">选择提供商</div>
+      <div class="provider-grid" id="providerGrid"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary btn-sm" id="testAllBtn" onclick="testAllProviders()">测试全部</button>
+        <button class="btn btn-secondary btn-sm" id="testSelectedBtn" onclick="testSelectedProvider()">测试选中</button>
+        <span id="progressText" style="font-size:12px; color:#888; line-height:32px;"></span>
+      </div>
+      <div class="progress-bar-wrap" id="progressWrap" style="display:none">
+        <div class="progress-bar" id="progressBar" style="width:0%"></div>
+      </div>
+    </div>
+
+    <!-- 汇总结果 -->
+    <div id="summaryArea" style="display:none"></div>
+
+    <!-- 配置管理（折叠） -->
+    <div class="card">
+      <div class="collapse-toggle" onclick="toggleCollapse('configCollapse')">
+        <span>提供商配置管理</span>
+        <span class="arrow" id="configCollapseArrow">&#9654;</span>
+      </div>
+      <div class="collapse-body" id="configCollapse">
+        <div class="config-list" id="configList"></div>
+        <div class="btn-row">
+          <button class="btn btn-primary btn-sm" onclick="addProvider()">添加提供商</button>
+          <button class="btn btn-secondary btn-sm" onclick="importConfig()">导入配置</button>
+          <button class="btn btn-secondary btn-sm" onclick="exportConfig()">导出配置</button>
+          <button class="btn btn-secondary btn-sm" onclick="resetToDefault()">恢复默认</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="editForm" style="display:none">
+      <div class="card-title" id="editTitle">添加提供商</div>
+      <input type="hidden" id="editId">
+      <div class="form-group">
+        <label>提供商名称</label>
+        <input type="text" id="editName" placeholder="OpenRouter">
+      </div>
+      <div class="form-group">
+        <label>API 地址</label>
+        <input type="text" id="editUrl" placeholder="https://openrouter.ai/api/v1/chat/completions">
+      </div>
+      <div class="form-group">
+        <label>API Key</label>
+        <input type="text" id="editKey" placeholder="sk-...">
+      </div>
+      <div class="form-group">
+        <label>模型列表（每行一个，格式：模型ID|描述）</label>
+        <textarea id="editModels" rows="4" placeholder="google/gemma-4-26b-a4b-it:free|Vision&#10;qwen/qwen3-next-80b-a3b-instruct:free|Chat"></textarea>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary btn-sm" onclick="saveProvider()">保存</button>
+        <button class="btn btn-secondary btn-sm" onclick="cancelEdit()">取消</button>
+        <button class="btn btn-danger btn-sm" id="deleteBtn" onclick="deleteProvider()" style="display:none">删除</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="keys.js"></script>
+<script>
+// ==================== 配置数据 ====================
+var STORAGE_KEY = 'ai_tester_configs';
+var DEFAULT_CONFIGS = [
+  { id:'zhipu', name:'智谱AI', url:'https://open.bigmodel.cn/api/paas/v4/chat/completions', key:'', models:[{id:'glm-4-flash',desc:'Chat'},{id:'glm-4.6v-flash',desc:'Vision'}] },
+  { id:'deepseek', name:'DeepSeek', url:'https://api.deepseek.com/chat/completions', key:'', models:[{id:'deepseek-v4-flash',desc:'Fast'},{id:'deepseek-v4-pro',desc:'Pro'}] },
+  { id:'openrouter', name:'OpenRouter', url:'https://openrouter.ai/api/v1/chat/completions', key:'', models:[{id:'google/gemma-4-26b-a4b-it:free',desc:'Vision'},{id:'qwen/qwen3-next-80b-a3b-instruct:free',desc:'Chat'}] },
+  { id:'kimi', name:'Kimi', url:'https://api.moonshot.cn/v1/chat/completions', key:'', models:[{id:'kimi-k2.5',desc:'Chat'},{id:'kimi-k2.6',desc:'Code'}] },
+  { id:'nvidia', name:'NVIDIA NIM', url:'https://integrate.api.nvidia.com/v1/chat/completions', key:'', models:[{id:'deepseek-ai/deepseek-v4-flash',desc:'Fast'},{id:'zai-org/glm-5',desc:'GLM-5'},{id:'moonshotai/kimi-k2.6',desc:'Kimi'}] }
+];
+
+var configs = [], selectedProvider = null, allResults = [], testing = false, editingId = null;
+
+// ==================== 初始化 ====================
+window.onload = function() {
+  loadConfigs();
+  renderProviderGrid();
+  renderConfigList();
+  renderQuickModels();
+  document.getElementById('manualPaste').addEventListener('input', function() { parseManualPaste(this.value); });
+};
+
+function loadConfigs() {
+  var s = localStorage.getItem(STORAGE_KEY);
+  configs = s ? JSON.parse(s) : JSON.parse(JSON.stringify(DEFAULT_CONFIGS));
+  if (typeof LOCAL_API_KEYS !== 'undefined') {
+    for (var i = 0; i < configs.length; i++) {
+      if (LOCAL_API_KEYS[configs[i].id] && !configs[i].key) {
+        configs[i].key = LOCAL_API_KEYS[configs[i].id];
+      }
+    }
+  }
+}
+function saveConfigs() { localStorage.setItem(STORAGE_KEY, JSON.stringify(configs)); renderProviderGrid(); renderConfigList(); renderQuickModels(); }
+
+// ==================== Tab 切换 ====================
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+  document.querySelectorAll('.tab-content').forEach(function(t) { t.classList.remove('active'); });
+  document.querySelector('.tab[onclick="switchTab(\'' + tab + '\')"]').classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+}
+
+// ==================== 折叠 ====================
+function toggleCollapse(id) {
+  var body = document.getElementById(id);
+  var arrow = document.getElementById(id + 'Arrow');
+  body.classList.toggle('open');
+  arrow.classList.toggle('open');
+}
+
+// ==================== 提供商网格 ====================
+function renderProviderGrid() {
+  var grid = document.getElementById('providerGrid');
+  grid.innerHTML = '';
+  configs.forEach(function(c, i) {
+    var div = document.createElement('div');
+    div.className = 'provider-btn' + (selectedProvider === i ? ' active' : '');
+    div.innerHTML = '<div class="name">' + esc(c.name) + '</div><div class="count">' + c.models.length + ' 个模型</div>';
+    div.onclick = function() {
+      document.querySelectorAll('.provider-btn').forEach(function(b) { b.classList.remove('active'); });
+      if (selectedProvider === i) { selectedProvider = null; } else { selectedProvider = i; div.classList.add('active'); }
+    };
+    grid.appendChild(div);
+  });
+}
+
+// ==================== 快速模型选择（手动测试页底部） ====================
+function renderQuickModels() {
+  var el = document.getElementById('manualResult');
+  if (!el) return;
+  var h = '<div class="card"><div class="card-title">常用模型快速选择</div><div class="btn-row">';
+  configs.forEach(function(c) {
+    c.models.forEach(function(m) {
+      h += '<button class="btn btn-secondary btn-sm" onclick="fillManual(\'' + esc(c.url) + '\',\'' + esc(m.id) + '\',\'' + esc(c.key) + '\')">' + esc(m.id) + '</button>';
+    });
+  });
+  h += '</div></div>';
+  el.innerHTML = h;
+}
+
+function fillManual(url, model, key) {
+  document.getElementById('manualUrl').value = url;
+  document.getElementById('manualModel').value = model;
+  document.getElementById('manualKey').value = key;
+}
+
+// ==================== 配置列表 ====================
+function renderConfigList() {
+  var list = document.getElementById('configList');
+  list.innerHTML = '';
+  configs.forEach(function(c) {
+    var div = document.createElement('div');
+    div.className = 'config-item' + (editingId === c.id ? ' active' : '');
+    div.innerHTML = '<div><div class="ci-name">' + esc(c.name) + '</div><div class="ci-info">' + c.models.length + ' 个模型 | ' + esc(c.url) + '</div></div>';
+    div.onclick = function() { editProvider(c.id); };
+    list.appendChild(div);
+  });
+}
+
+// ==================== 配置编辑 ====================
+function addProvider() {
+  editingId = null;
+  document.getElementById('editId').value = '';
+  document.getElementById('editName').value = '';
+  document.getElementById('editUrl').value = '';
+  document.getElementById('editKey').value = '';
+  document.getElementById('editModels').value = '';
+  document.getElementById('editTitle').textContent = '添加提供商';
+  document.getElementById('deleteBtn').style.display = 'none';
+  document.getElementById('editForm').style.display = '';
+}
+
+function editProvider(id) {
+  var c = configs.find(function(x) { return x.id === id; });
+  if (!c) return;
+  editingId = id;
+  document.getElementById('editId').value = id;
+  document.getElementById('editName').value = c.name;
+  document.getElementById('editUrl').value = c.url;
+  document.getElementById('editKey').value = c.key;
+  document.getElementById('editModels').value = c.models.map(function(m) { return m.id + '|' + m.desc; }).join('\n');
+  document.getElementById('editTitle').textContent = '编辑提供商';
+  document.getElementById('deleteBtn').style.display = '';
+  document.getElementById('editForm').style.display = '';
+  renderConfigList();
+}
+
+function saveProvider() {
+  var id = document.getElementById('editId').value || Date.now().toString(36);
+  var name = document.getElementById('editName').value.trim();
+  var url = document.getElementById('editUrl').value.trim();
+  var key = document.getElementById('editKey').value.trim();
+  var mt = document.getElementById('editModels').value.trim();
+  if (!name || !url || !key || !mt) { alert('请填写所有字段'); return; }
+  var models = mt.split('\n').map(function(l) { var p = l.split('|'); return { id: p[0].trim(), desc: p.length > 1 ? p[1].trim() : '' }; }).filter(function(m) { return m.id; });
+  var idx = configs.findIndex(function(c) { return c.id === id; });
+  if (idx >= 0) configs[idx] = { id: id, name: name, url: url, key: key, models: models };
+  else configs.push({ id: id, name: name, url: url, key: key, models: models });
+  saveConfigs(); cancelEdit();
+}
+
+function deleteProvider() {
+  var id = document.getElementById('editId').value;
+  if (!id || !confirm('确定删除？')) return;
+  configs = configs.filter(function(c) { return c.id !== id; });
+  saveConfigs(); cancelEdit();
+}
+
+function cancelEdit() { editingId = null; document.getElementById('editForm').style.display = 'none'; renderConfigList(); }
+
+function importConfig() {
+  var t = prompt('粘贴配置JSON:'); if (!t) return;
+  try { var d = JSON.parse(t); configs = Array.isArray(d) ? d : (d.id ? d : null); if (!configs) { alert('格式错误'); return; } saveConfigs(); alert('导入成功'); }
+  catch (e) { alert('JSON解析失败: ' + e.message); }
+}
+
+function exportConfig() {
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(configs, null, 2)], { type: 'application/json' }));
+  a.download = 'ai-tester-configs.json'; a.click();
+}
+
+function resetToDefault() {
+  if (!confirm('确定恢复默认配置？')) return;
+  configs = JSON.parse(JSON.stringify(DEFAULT_CONFIGS)); saveConfigs(); alert('已恢复');
+}
+
+// ==================== API 测试核心 ====================
+function apiTest(url, model, key, timeout, cb) {
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/test', true);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.timeout = (timeout + 5) * 1000;
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState === 4) {
+      if (xhr.status === 200) { try { cb(JSON.parse(xhr.responseText)); } catch(e) { cb({status:'error',model:model,url:url,response_time:0,error:'解析失败'}); } }
+      else cb({status:'error',model:model,url:url,response_time:0,error:'HTTP '+xhr.status});
+    }
+  };
+  xhr.onerror = function() { cb({status:'error',model:model,url:url,response_time:0,error:'网络错误'}); };
+  xhr.ontimeout = function() { cb({status:'error',model:model,url:url,response_time:0,error:'请求超时'}); };
+  xhr.send(JSON.stringify({ url:url, model:model, key:key, timeout:timeout }));
+}
+
+// ==================== 批量测试 ====================
+function testAllProviders() { runTest(configs); }
+function testSelectedProvider() { if (selectedProvider===null) { alert('请先选择提供商'); return; } runTest([configs[selectedProvider]]); }
+
+function runTest(providers) {
+  if (testing) return; testing = true; allResults = [];
+  var tasks = []; providers.forEach(function(p) { p.models.forEach(function(m) { tasks.push({provider:p,model:m}); }); });
+  var total = tasks.length, done = 0, ok = 0, fail = 0;
+
+  document.getElementById('summaryArea').innerHTML = '';
+  document.getElementById('summaryArea').style.display = 'none';
+  document.getElementById('progressWrap').style.display = '';
+  document.getElementById('progressBar').style.width = '0%';
+  document.getElementById('progressText').textContent = '0 / ' + total;
+  var btnA = document.getElementById('testAllBtn'), btnB = document.getElementById('testSelectedBtn');
+  btnA.disabled = true; btnB.disabled = true; btnA.innerHTML = '<span class="spinner"></span>测试中...';
+
+  function next() {
+    if (done >= total) {
+      testing = false; btnA.disabled = false; btnB.disabled = false; btnA.textContent = '测试全部';
+      document.getElementById('progressText').textContent = '完成!';
+      showSummary(ok, fail, total); return;
+    }
+    var t = tasks[done];
+    document.getElementById('progressText').textContent = (done+1) + ' / ' + total + '  ' + t.provider.name + ' / ' + t.model.id;
+    apiTest(t.provider.url, t.model.id, t.provider.key, 15, function(data) {
+      data.providerId = t.provider.id; data.providerName = t.provider.name; data.desc = t.model.desc;
+      allResults.push(data);
+      if (data.status === 'success') ok++; else fail++;
+      done++; document.getElementById('progressBar').style.width = Math.round(done/total*100) + '%';
+      next();
+    });
+  }
+  next();
+}
+
+// ==================== 结果渲染 ====================
+function renderResultCard(d) {
+  var ok = d.status === 'success', cls = ok ? 'success' : 'error';
+  var h = '<div class="result-card ' + cls + '"><div class="result-header">';
+  h += '<span style="font-weight:600;font-size:14px;">' + esc(d.model) + ' <span style="font-size:11px;color:#888;font-weight:400;">(' + esc(d.desc||'') + ')</span></span>';
+  h += '<span class="result-status ' + cls + '">' + (ok ? '连通成功' : '连通失败') + '</span></div>';
+  h += '<div class="result-info">';
+  h += '<div><span class="label">响应: </span><span class="value">' + d.response_time + 'ms</span>';
+  if (d.status_code) h += ' &nbsp;<span class="label">HTTP: </span><span class="value">' + d.status_code + '</span>';
+  h += '</div>';
+  if (ok) {
+    h += '<div><span class="success-msg">连接正常</span></div>';
+    if (d.preview) h += '<div class="response-preview">' + esc(d.preview) + '</div>';
+  } else {
+    h += '<div><span class="label">原因: </span><span class="error-msg">' + esc(d.error||'未知') + '</span></div>';
+    if (d.error_type) h += '<div><span class="label">类型: </span><span class="error-msg">' + esc(d.error_type) + '</span></div>';
+    if (d.suggestion) h += '<div><span class="label">建议: </span><span class="value">' + esc(d.suggestion) + '</span></div>';
+  }
+  h += '</div></div>';
+  return h;
+}
+
+function showSummary(ok, fail, total) {
+  var rate = total > 0 ? Math.round(ok/total*100) : 0;
+  var html = '<div class="card"><div class="summary-bar">';
+  html += '<div class="summary-item summary-total"><div class="num">' + total + '</div><div class="lbl">总计</div></div>';
+  html += '<div class="summary-item summary-ok"><div class="num">' + ok + '</div><div class="lbl">成功</div></div>';
+  html += '<div class="summary-item summary-fail"><div class="num">' + fail + '</div><div class="lbl">失败</div></div>';
+  html += '<div class="summary-item summary-rate"><div class="num">' + rate + '%</div><div class="lbl">成功率</div></div>';
+  html += '</div></div>';
+
+  var groups = {};
+  allResults.forEach(function(r) { if (!groups[r.providerId]) groups[r.providerId] = { name: r.providerName, results: [] }; groups[r.providerId].results.push(r); });
+  Object.keys(groups).forEach(function(pk) {
+    var g = groups[pk], gOk = g.results.filter(function(r) { return r.status==='success'; }).length, gTotal = g.results.length;
+    var tag = gOk===gTotal ? 'ok' : (gOk===0 ? 'fail' : 'partial');
+    var tagText = tag==='ok' ? '全部通过' : (tag==='fail' ? '全部失败' : gOk+'/'+gTotal+' 通过');
+    html += '<div class="provider-group"><div class="provider-group-title">' + esc(g.name) + ' <span class="pg-tag ' + tag + '">' + tagText + '</span></div>';
+    g.results.forEach(function(r) { html += renderResultCard(r); });
+    html += '</div>';
+  });
+  document.getElementById('summaryArea').innerHTML = html;
+  document.getElementById('summaryArea').style.display = '';
+}
+
+// ==================== 手动测试 ====================
+function doManualTest() {
+  var url = document.getElementById('manualUrl').value.trim();
+  var model = document.getElementById('manualModel').value.trim();
+  var key = document.getElementById('manualKey').value.trim();
+  var timeout = parseInt(document.getElementById('manualTimeout').value) || 15;
+  if (!url || !model || !key) { alert('请填写所有字段'); return; }
+  var btn = document.getElementById('manualTestBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>测试中...';
+  apiTest(url, model, key, timeout, function(data) {
+    data.desc = '手动测试';
+    var container = document.getElementById('manualResult');
+    var old = container.querySelector('.result-card');
+    if (old) old.remove();
+    var div = document.createElement('div');
+    div.innerHTML = renderResultCard(data);
+    container.querySelector('.card').appendChild(div.firstChild);
+    btn.disabled = false; btn.textContent = '测试连通性';
+  });
+}
+
+// ==================== 粘贴自动识别 ====================
+
+var KNOWN_URL_MAP = {
+  'openrouter': 'https://openrouter.ai/api/v1/chat/completions',
+  'open.bigmodel': 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+  'nvidia': 'https://integrate.api.nvidia.com/v1/chat/completions',
+  'deepseek': 'https://api.deepseek.com/chat/completions',
+  'moonshot': 'https://api.moonshot.cn/v1/chat/completions',
+  'xiaomimimo': 'https://api.xiaomimimo.com/v1/chat/completions',
+  'api.openai': 'https://api.openai.com/v1/chat/completions'
+};
+
+var KNOWN_KEY_PREFIX_URL = [
+  { prefix: 'sk-or-v1-', url: 'https://openrouter.ai/api/v1/chat/completions' },
+  { prefix: 'nvapi-',    url: 'https://integrate.api.nvidia.com/v1/chat/completions' },
+  { prefix: 'sk-7660',   url: 'https://api.deepseek.com/chat/completions' },
+  { prefix: 'sk-Zu0',    url: 'https://api.moonshot.cn/v1/chat/completions' },
+  { prefix: 'sk-c675',   url: 'https://api.xiaomimimo.com/v1/chat/completions' },
+  { prefix: 'sk-',       url: 'https://api.deepseek.com/chat/completions' }
+];
+
+var MODEL_PATTERNS = [
+  /^glm-[\w.\-]+$/i,
+  /^deepseek-[\w.\-]+$/i,
+  /^kimi-[\w.\-]+$/i,
+  /^mimo-[\w.\-]+$/i,
+  /^qwen[\w.\-\/:]+$/i,
+  /^llama-[\w.\-\/:]+$/i,
+  /^meta-[\w.\-\/:]+$/i,
+  /^google\/[\w.\-\/:]+$/i,
+  /^moonshotai\/[\w.\-\/:]+$/i,
+  /^minimax[\w.\-\/:]+$/i,
+  /^gpt-[\w.\-]+$/i,
+  /^claude-[\w.\-]+$/i,
+  /^gemini[\w.\-]+$/i,
+  /^\w+\/[\w.\-]+:[\w]+$/i,
+  /^\w+\/[\w.\-]+$/i
+];
+
+var KEY_PATTERNS = [
+  /^sk-or-[\w\-]+$/,
+  /^nvapi-[\w\-]+$/,
+  /^sk-[\w\-]+$/,
+  /^1a0d[a-zA-Z0-9._]+$/,
+  /^[a-f0-9]{32}$/
+];
+
+function cleanVal(s) {
+  return s
+    .replace(/^[`'"]+/, '').replace(/[`'"]+$/, '')
+    .replace(/\s*#.*$/, '')
+    .trim();
+}
+
+function extractVal(line) {
+  var m = line.match(/^[\w._-]+[:=]\s*(\S.*)$/i);
+  if (m) return cleanVal(m[1]);
+  return cleanVal(line);
+}
+
+function isUrl(s) {
+  return /^https?:\/\/[\w.\-]+/.test(s);
+}
+
+function isKey(s) {
+  if (s.length < 10) return false;
+  for (var i = 0; i < KEY_PATTERNS.length; i++) {
+    if (KEY_PATTERNS[i].test(s)) return true;
+  }
+  if (s.length > 25 && s.indexOf('.') > 8 && /^[a-zA-Z0-9._]+$/.test(s)) return true;
+  return false;
+}
+
+function isModel(s) {
+  if (s.length < 2 || s.length > 120) return false;
+  if (/[\s=]/.test(s)) return false;
+  for (var i = 0; i < MODEL_PATTERNS.length; i++) {
+    if (MODEL_PATTERNS[i].test(s)) return true;
+  }
+  return false;
+}
+
+function lineHasKeyToken(line) {
+  return /api[_-]?key/i.test(line) || /[\w_]*key[\w_]*[:=]/i.test(line);
+}
+
+function lineHasUrlToken(line) {
+  return /base[_-]?url/i.test(line) || /endpoint/i.test(line) || /url[:=]/i.test(line);
+}
+
+function lineHasModelToken(line) {
+  return /model[:=]/i.test(line) || /default[_-]?model/i.test(line) || /vision[_-]?model/i.test(line);
+}
+
+function inferUrlFromKey(key) {
+  for (var i = 0; i < KNOWN_KEY_PREFIX_URL.length; i++) {
+    if (key.indexOf(KNOWN_KEY_PREFIX_URL[i].prefix) === 0) return KNOWN_KEY_PREFIX_URL[i].url;
+  }
+  return '';
+}
+
+function inferUrlFromBaseUrl(base) {
+  var lower = base.toLowerCase();
+  for (var k in KNOWN_URL_MAP) {
+    if (lower.indexOf(k) >= 0) return KNOWN_URL_MAP[k];
+  }
+  if (isUrl(base)) {
+    var url = base.replace(/\/+$/, '');
+    if (!/\/chat\/completions$/.test(url)) url += '/chat/completions';
+    return url;
+  }
+  return '';
+}
+
+function parseManualPaste(text) {
+  var hint = document.getElementById('manualParsedHint');
+  if (!text.trim()) { hint.innerHTML = ''; clearPasteFields(); return; }
+
+  var lines = text.split(/[\n\r]+/);
+  var foundUrl = '', foundKey = '', foundModel = '';
+  var baseUrlHint = '';
+  var candidates = { keys: [], models: [], urls: [] };
+
+  for (var i = 0; i < lines.length; i++) {
+    var raw = lines[i].trim();
+    if (!raw) continue;
+    if (/^#{2,}\s/.test(raw) || /^[-=]{3,}$/.test(raw) || /^#+\s*={3,}/.test(raw)) continue;
+    if (/^(#|\/\/)\s*$/.test(raw)) continue;
+
+    var cleaned = cleanVal(raw);
+    if (!cleaned) continue;
+
+    var val = extractVal(cleaned);
+    if (!val) continue;
+
+    if (isUrl(val)) {
+      if (!foundUrl) foundUrl = val.replace(/\/+$/, '');
+      candidates.urls.push(val);
+    }
+
+    if (!baseUrlHint && lineHasUrlToken(cleaned)) {
+      var bv = extractVal(cleaned);
+      if (bv && !isUrl(bv)) baseUrlHint = bv;
+    }
+
+    if (!foundKey && lineHasKeyToken(cleaned)) {
+      var kv = extractVal(cleaned);
+      if (kv && isKey(kv)) { foundKey = kv; candidates.keys.push(kv); }
+    }
+
+    if (!foundModel && lineHasModelToken(cleaned)) {
+      var mv = extractVal(cleaned);
+      if (mv && isModel(mv)) { foundModel = mv; candidates.models.push(mv); }
+    }
+  }
+
+  if (!foundKey) {
+    for (var i = 0; i < lines.length; i++) {
+      var raw = lines[i].trim();
+      if (!raw) continue;
+      var val = cleanVal(extractVal(cleanVal(raw)));
+      if (!val || isUrl(val)) continue;
+      if (isKey(val)) { foundKey = val; candidates.keys.push(val); break; }
+    }
+  }
+
+  if (!foundModel) {
+    for (var i = 0; i < lines.length; i++) {
+      var raw = lines[i].trim();
+      if (!raw) continue;
+      var val = cleanVal(extractVal(cleanVal(raw)));
+      if (!val || isUrl(val) || isKey(val)) continue;
+      if (isModel(val)) { foundModel = val; candidates.models.push(val); break; }
+    }
+  }
+
+  if (!foundUrl) {
+    if (baseUrlHint) {
+      foundUrl = inferUrlFromBaseUrl(baseUrlHint);
+    } else if (foundKey) {
+      foundUrl = inferUrlFromKey(foundKey);
+    }
+  }
+
+  if (!foundUrl) {
+    for (var i = 0; i < candidates.urls.length; i++) {
+      var u = candidates.urls[i].toLowerCase();
+      if (u.indexOf('chat/completions') > 0) { foundUrl = candidates.urls[i]; break; }
+    }
+    if (!foundUrl && candidates.urls.length) foundUrl = candidates.urls[0];
+    if (foundUrl) foundUrl = foundUrl.replace(/\/+$/, '');
+  }
+
+  if (!foundModel && foundUrl) {
+    for (var c = 0; c < configs.length; c++) {
+      if (configs[c].url === foundUrl && configs[c].models.length) {
+        foundModel = configs[c].models[0].id; break;
+      }
+    }
+  }
+
+  if (foundUrl) {
+    var urlLower = foundUrl.toLowerCase();
+    if (urlLower.indexOf('chat/completions') < 0 && urlLower.indexOf('api.openai') < 0) {
+      foundUrl = foundUrl.replace(/\/+$/, '') + '/chat/completions';
+    }
+  }
+
+  if (foundModel) {
+    var m = foundModel;
+    var simpleModels = ['glm-4-flash','glm-4.7-flash','glm-4.6v-flash','deepseek-v4-flash','deepseek-v4-pro',
+      'kimi-k2.5','kimi-k2.6','mimo-v2.5','mimo-v2.5-pro'];
+    if (simpleModels.indexOf(m) >= 0 && foundUrl) {
+      if (foundUrl.indexOf('open.bigmodel') >= 0) { /* ok */ }
+      else if (foundUrl.indexOf('openrouter') >= 0) {
+        var orMap = {
+          'deepseek-v4-flash': 'deepseek/deepseek-v4-flash:free',
+          'kimi-k2.5': 'moonshotai/kimi-k2.6:free',
+          'kimi-k2.6': 'moonshotai/kimi-k2.6:free',
+          'glm-4-flash': 'google/gemma-4-26b-a4b-it:free',
+          'glm-4.6v-flash': 'google/gemma-4-26b-a4b-it:free'
+        };
+        if (orMap[m]) foundModel = orMap[m];
+      }
+    }
+  }
+
+  if (foundUrl) document.getElementById('manualUrl').value = foundUrl;
+  if (foundModel) document.getElementById('manualModel').value = foundModel;
+  if (foundKey) document.getElementById('manualKey').value = foundKey;
+
+  var tags = [];
+  if (foundUrl) tags.push('<span class="badge badge-url">URL: ' + esc(foundUrl.replace('https://','').substring(0,30)) + '</span>');
+  if (foundModel) tags.push('<span class="badge badge-model">' + esc(foundModel) + '</span>');
+  if (foundKey) tags.push('<span class="badge badge-key">Key: ' + esc(foundKey.substring(0,12)) + '...</span>');
+  var detected = [];
+  if (candidates.keys.length > 1) detected.push(candidates.keys.length + '个Key');
+  if (candidates.models.length > 1) detected.push(candidates.models.length + '个模型');
+  if (candidates.urls.length > 1) detected.push(candidates.urls.length + '个URL');
+  if (detected.length) tags.push('<span class="badge badge-warn">检测到多个值，已取首个</span>');
+  hint.innerHTML = tags.length ? tags.join(' ') : '<span class="badge badge-warn">未识别到有效信息</span>';
+}
+
+function clearPasteFields() {
+  document.getElementById('manualUrl').value = '';
+  document.getElementById('manualModel').value = '';
+  document.getElementById('manualKey').value = '';
+}
+
+function clearManualPaste() {
+  document.getElementById('manualPaste').value = '';
+  document.getElementById('manualParsedHint').innerHTML = '';
+  document.getElementById('manualUrl').value = '';
+  document.getElementById('manualModel').value = '';
+  document.getElementById('manualKey').value = '';
+}
+
+function doManualPasteTest() {
+  var url = document.getElementById('manualUrl').value.trim();
+  var model = document.getElementById('manualModel').value.trim();
+  var key = document.getElementById('manualKey').value.trim();
+  if (!url || !model || !key) { alert('未识别到完整信息，请检查或手动填写'); return; }
+  doManualTest();
+}
+
+// ==================== 工具 ====================
+function esc(s) { return s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : ''; }
+</script>
+</body>
+</html>

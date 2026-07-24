@@ -1,0 +1,10 @@
+# AI 模型连接测试工具依赖
+
+# YAML配置文件解析
+PyYAML>=6.0
+
+# HTTP请求库
+requests>=2.31.0
+
+# 类型注解支持（Python 3.7+）
+typing-extensions>=4.0.0

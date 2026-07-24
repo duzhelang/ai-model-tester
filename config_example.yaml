@@ -1,0 +1,32 @@
+# ============================================================
+# AI 模型连通性测试工具 - 配置示例
+# 复制此文件为 config.yaml 并填入你自己的 API Key
+# config.yaml 已被 .gitignore 排除，不会提交到版本控制
+# ============================================================
+
+# 智谱AI
+# 获取地址: https://platform.zhipuai.com/
+ZHIPU_API_KEY: your-zhipu-api-key-here
+
+# DeepSeek
+# 获取地址: https://platform.deepseek.com/
+DEEPSEEK_API_KEY: your-deepseek-api-key-here
+
+# OpenRouter（免费模型聚合平台）
+# 获取地址: https://openrouter.ai/keys
+OPENROUTER_API_KEY: your-openrouter-api-key-here
+
+# Kimi (Moonshot)
+# 获取地址: https://platform.moonshot.cn/
+KIMI_API_KEY: your-kimi-api-key-here
+
+# 小米 MiMo
+# 获取地址: https://platform.xiaomimimo.com/
+MIMO_API_KEY: your-mimo-api-key-here
+
+# NVIDIA NIM
+# 获取地址: https://build.nvidia.com/
+NVIDIA_API_KEY: your-nvidia-api-key-here
+
+# 千问（通过 OpenRouter 访问）
+QWEN_API_KEY: your-qwen-api-key-here
