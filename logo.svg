@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea"/>
+      <stop offset="100%" style="stop-color:#764ba2"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fff;stop-opacity:0.9"/>
+      <stop offset="100%" style="stop-color:#e0e7ff;stop-opacity:0.7"/>
+    </linearGradient>
+  </defs>
+  <!-- Background rounded square -->
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <!-- Network nodes -->
+  <!-- Center hub -->
+  <circle cx="256" cy="256" r="42" fill="url(#glow)"/>
+  <text x="256" y="268" text-anchor="middle" font-family="Arial,sans-serif" font-weight="900" font-size="36" fill="#667eea">AI</text>
+  <!-- Top node -->
+  <circle cx="256" cy="110" r="28" fill="rgba(255,255,255,0.85)"/>
+  <text x="256" y="118" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="18" fill="#764ba2">T</text>
+  <!-- Top-right node -->
+  <circle cx="380" cy="183" r="24" fill="rgba(255,255,255,0.75)"/>
+  <text x="380" y="191" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="16" fill="#764ba2">O</text>
+  <!-- Bottom-right node -->
+  <circle cx="380" cy="329" r="24" fill="rgba(255,255,255,0.75)"/>
+  <text x="380" y="337" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="16" fill="#764ba2">R</text>
+  <!-- Bottom node -->
+  <circle cx="256" cy="402" r="28" fill="rgba(255,255,255,0.85)"/>
+  <text x="256" y="410" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="18" fill="#764ba2">P</text>
+  <!-- Bottom-left node -->
+  <circle cx="132" cy="329" r="24" fill="rgba(255,255,255,0.75)"/>
+  <text x="132" y="337" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="16" fill="#764ba2">S</text>
+  <!-- Top-left node -->
+  <circle cx="132" cy="183" r="24" fill="rgba(255,255,255,0.75)"/>
+  <text x="132" y="191" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="16" fill="#764ba2">G</text>
+  <!-- Connection lines -->
+  <line x1="256" y1="138" x2="256" y2="214" stroke="rgba(255,255,255,0.5)" stroke-width="4" stroke-linecap="round"/>
+  <line x1="358" y1="196" x2="288" y2="238" stroke="rgba(255,255,255,0.5)" stroke-width="4" stroke-linecap="round"/>
+  <line x1="358" y1="316" x2="288" y2="274" stroke="rgba(255,255,255,0.5)" stroke-width="4" stroke-linecap="round"/>
+  <line x1="256" y1="374" x2="256" y2="298" stroke="rgba(255,255,255,0.5)" stroke-width="4" stroke-linecap="round"/>
+  <line x1="154" y1="316" x2="224" y2="274" stroke="rgba(255,255,255,0.5)" stroke-width="4" stroke-linecap="round"/>
+  <line x1="154" y1="196" x2="224" y2="238" stroke="rgba(255,255,255,0.5)" stroke-width="4" stroke-linecap="round"/>
+  <!-- Status dots (green = connected) -->
+  <circle cx="256" cy="138" r="6" fill="#52c41a"/>
+  <circle cx="358" cy="196" r="5" fill="#52c41a"/>
+  <circle cx="358" cy="316" r="5" fill="#faad14"/>
+  <circle cx="256" cy="374" r="6" fill="#52c41a"/>
+  <circle cx="154" cy="316" r="5" fill="#52c41a"/>
+  <circle cx="154" cy="196" r="5" fill="#ff4d4f"/>
+</svg>

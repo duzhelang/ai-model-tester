@@ -134,21 +134,42 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         pass
 
+    STATIC_MAP = {
+        "/favicon.ico": ("image/x-icon", True),
+        "/logo_16.png": ("image/png", True),
+        "/logo_32.png": ("image/png", True),
+        "/logo_48.png": ("image/png", True),
+        "/logo_64.png": ("image/png", True),
+        "/logo_128.png": ("image/png", True),
+        "/logo_192.png": ("image/png", True),
+        "/logo_256.png": ("image/png", True),
+        "/logo_512.png": ("image/png", True),
+        "/logo.svg": ("image/svg+xml", False),
+        "/apple-touch-icon.png": ("image/png", True),
+    }
+
     def do_GET(self):
         if self.path == "/" or self.path == "/index.html":
             self._serve_file("index.html", "text/html; charset=utf-8")
         elif self.path == "/keys.js":
             self._serve_file("keys.js", "application/javascript; charset=utf-8",
                              fallback=b"var LOCAL_API_KEYS = {};")
+        elif self.path in self.STATIC_MAP:
+            ct, binary = self.STATIC_MAP[self.path]
+            self._serve_file(self.path.lstrip("/"), ct, binary=binary)
         else:
             self.send_error(404)
 
-    def _serve_file(self, filename, content_type, fallback=None):
+    def _serve_file(self, filename, content_type, fallback=None, binary=False):
         fpath = resource_path(filename)
         try:
-            with open(fpath, "r", encoding="utf-8") as f:
-                content = f.read()
-            data = content.encode("utf-8")
+            if binary:
+                with open(fpath, "rb") as f:
+                    data = f.read()
+            else:
+                with open(fpath, "r", encoding="utf-8") as f:
+                    content = f.read()
+                data = content.encode("utf-8")
         except FileNotFoundError:
             if fallback:
                 data = fallback
