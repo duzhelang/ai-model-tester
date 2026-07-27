@@ -9,6 +9,7 @@ build/
 *.log
 config.yaml
 keys.js
+API_配置说明.md
 quick_test.txt
 test_cases.md
 测试.txt
