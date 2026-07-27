@@ -54,16 +54,13 @@ python ai_tester_web.py
 
 ```
 ai-model-tester/
-├── ai_tester_web.py          # 网页版服务端（推荐）
+├── ai_tester_web.py          # 网页版服务端（主程序）
 ├── index.html                # 网页界面（HTML/CSS/JS 一体化）
-├── ai_tester.py              # 命令行版本
-├── config_parser.py          # YAML 配置解析器
-├── model_tester.py           # API 测试核心逻辑
-├── report_generator.py       # 测试报告生成器
-├── quick_test.txt            # 快速测试用例（可直接复制粘贴）
-├── config_example.yaml       # 配置文件示例
+├── keys.js                   # 本地 API Key（不提交，自动生成）
+├── build.py                  # PyInstaller 打包脚本
 ├── 启动测试工具.bat           # Windows 双击启动脚本
-└── requirements.txt          # Python 依赖
+├── requirements.txt          # Python 依赖
+└── README.md                 # 使用文档
 ```
 
 ## 网页界面功能
