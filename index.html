@@ -270,11 +270,14 @@ body { font-family: "Microsoft YaHei", sans-serif; background: #f5f7fa; min-heig
 // ==================== 配置数据 ====================
 var STORAGE_KEY = 'ai_tester_configs';
 var DEFAULT_CONFIGS = [
-  { id:'zhipu', name:'智谱AI', url:'https://open.bigmodel.cn/api/paas/v4/chat/completions', key:'', models:[{id:'glm-4-flash',desc:'Chat'},{id:'glm-4.6v-flash',desc:'Vision'}] },
+  { id:'zhipu', name:'智谱AI', url:'https://open.bigmodel.cn/api/paas/v4/chat/completions', key:'', models:[{id:'glm-4-flash',desc:'Chat'},{id:'glm-4.6v-flash',desc:'Vision'},{id:'glm-4.7-flash',desc:'GLM-4.7'}] },
   { id:'deepseek', name:'DeepSeek', url:'https://api.deepseek.com/chat/completions', key:'', models:[{id:'deepseek-v4-flash',desc:'Fast'},{id:'deepseek-v4-pro',desc:'Pro'}] },
-  { id:'openrouter', name:'OpenRouter', url:'https://openrouter.ai/api/v1/chat/completions', key:'', models:[{id:'google/gemma-4-26b-a4b-it:free',desc:'Gemma 4 26B'},{id:'google/gemma-4-31b-it:free',desc:'Gemma 4 31B'},{id:'nvidia/nemotron-3-ultra-550b-a55b:free',desc:'Nemotron Ultra'},{id:'openai/gpt-oss-20b:free',desc:'GPT-OSS'}] },
-  { id:'kimi', name:'Kimi', url:'https://api.moonshot.cn/v1/chat/completions', key:'', models:[{id:'kimi-k2.5',desc:'Chat'},{id:'kimi-k2.6',desc:'Code'}] },
-  { id:'nvidia', name:'NVIDIA NIM', url:'https://integrate.api.nvidia.com/v1/chat/completions', key:'', models:[{id:'deepseek-ai/deepseek-v4-flash',desc:'Fast'},{id:'zai-org/glm-5',desc:'GLM-5'},{id:'moonshotai/kimi-k2.6',desc:'Kimi'}] }
+  { id:'openrouter', name:'OpenRouter', url:'https://openrouter.ai/api/v1/chat/completions', key:'', models:[{id:'google/gemma-4-26b-a4b-it:free',desc:'Gemma 4 26B'},{id:'google/gemma-4-31b-it:free',desc:'Gemma 4 31B'},{id:'nvidia/nemotron-3-ultra-550b-a55b:free',desc:'Nemotron Ultra 550B'},{id:'nvidia/nemotron-3-super-120b-a12b:free',desc:'Nemotron Super 120B'},{id:'nvidia/nemotron-nano-12b-v2-vl:free',desc:'Nemotron Nano VL'},{id:'openai/gpt-oss-20b:free',desc:'GPT-OSS 20B'},{id:'nvidia/nemotron-3-nano-30b-a3b:free',desc:'Nemotron Nano 30B'},{id:'nvidia/nemotron-nano-9b-v2:free',desc:'Nemotron Nano 9B'},{id:'cohere/north-mini-code:free',desc:'Cohere Mini Code'},{id:'inclusionai/ling-3.0-flash:free',desc:'Ling 3.0 Flash'},{id:'poolside/laguna-m.1:free',desc:'Laguna M.1'},{id:'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',desc:'Nemotron Omni'}] },
+  { id:'kimi', name:'Kimi', url:'https://api.moonshot.cn/v1/chat/completions', key:'', models:[{id:'kimi-k2.5',desc:'Chat'},{id:'kimi-k2.6',desc:'Code'},{id:'kimi-k2.7-code',desc:'K2.7 Code'}] },
+  { id:'nvidia', name:'NVIDIA NIM', url:'https://integrate.api.nvidia.com/v1/chat/completions', key:'', models:[{id:'deepseek-ai/deepseek-v4-flash',desc:'DeepSeek V4 Flash'},{id:'zai-org/glm-5',desc:'GLM-5'},{id:'zai-org/glm-5.1',desc:'GLM-5.1'},{id:'moonshotai/kimi-k2.6',desc:'Kimi K2.6'},{id:'meta-llama/llama-4-scout',desc:'Llama 4 Scout'},{id:'meta-llama/llama-4-maverick',desc:'Llama 4 Maverick'}] },
+  { id:'groq', name:'Groq (Free)', url:'https://api.groq.com/openai/v1/chat/completions', key:'', models:[{id:'llama-3.3-70b-versatile',desc:'Llama 3.3 70B'},{id:'openai/gpt-oss-120b',desc:'GPT-OSS 120B'},{id:'openai/gpt-oss-20b',desc:'GPT-OSS 20B'},{id:'qwen/qwen3.6-27b',desc:'Qwen3.6 27B'}] },
+  { id:'cerebras', name:'Cerebras (Free)', url:'https://api.cerebras.ai/v1/chat/completions', key:'', models:[{id:'gpt-oss-120b',desc:'GPT-OSS 120B'},{id:'zai-glm-4.7',desc:'GLM-4.7'},{id:'gemma-4-31b',desc:'Gemma 4 31B'}] },
+  { id:'cloudflare', name:'Cloudflare Workers AI', url:'https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1/chat/completions', key:'', models:[{id:'@cf/openai/gpt-oss-120b',desc:'GPT-OSS 120B'},{id:'@cf/google/gemma-4-26b-a4b-it',desc:'Gemma 4 26B'},{id:'@cf/moonshotai/kimi-k2.6',desc:'Kimi K2.6'},{id:'@cf/zai-org/glm-5.2',desc:'GLM-5.2'},{id:'@cf/qwen/qwen3-30b-a3b-fp8',desc:'Qwen3 30B'}] }
 ];
 
 var configs = [], selectedProvider = null, allResults = [], testing = false, editingId = null;
@@ -562,7 +565,10 @@ var KNOWN_URL_MAP = {
   'deepseek': 'https://api.deepseek.com/chat/completions',
   'moonshot': 'https://api.moonshot.cn/v1/chat/completions',
   'xiaomimimo': 'https://api.xiaomimimo.com/v1/chat/completions',
-  'api.openai': 'https://api.openai.com/v1/chat/completions'
+  'api.openai': 'https://api.openai.com/v1/chat/completions',
+  'groq': 'https://api.groq.com/openai/v1/chat/completions',
+  'cerebras': 'https://api.cerebras.ai/v1/chat/completions',
+  'cloudflare': 'https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1/chat/completions'
 };
 
 var KNOWN_KEY_PREFIX_URL = [
@@ -571,6 +577,8 @@ var KNOWN_KEY_PREFIX_URL = [
   { prefix: 'sk-7660',   url: 'https://api.deepseek.com/chat/completions' },
   { prefix: 'sk-Zu0',    url: 'https://api.moonshot.cn/v1/chat/completions' },
   { prefix: 'sk-c675',   url: 'https://api.xiaomimimo.com/v1/chat/completions' },
+  { prefix: 'gsk_',      url: 'https://api.groq.com/openai/v1/chat/completions' },
+  { prefix: 'csk-',      url: 'https://api.cerebras.ai/v1/chat/completions' },
   { prefix: 'sk-',       url: 'https://api.deepseek.com/chat/completions' }
 ];
 
