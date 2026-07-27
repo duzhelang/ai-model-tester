@@ -289,7 +289,25 @@ window.onload = function() {
   renderProviderGrid();
   renderConfigList();
   renderQuickModels();
-  document.getElementById('manualPaste').addEventListener('input', function() { parseManualPaste(this.value); });
+  var pasteEl = document.getElementById('manualPaste');
+  pasteEl.addEventListener('input', function() { parseManualPaste(this.value); });
+  pasteEl.addEventListener('paste', function(e) { var el = this; setTimeout(function() { parseManualPaste(el.value); }, 50); });
+  // Auto-detect multiline paste into manual input fields
+  ['manualUrl','manualModel','manualKey'].forEach(function(id) {
+    var el = document.getElementById(id);
+    el.addEventListener('paste', function(e) {
+      var self = this;
+      setTimeout(function() {
+        var v = self.value;
+        if (v.indexOf('\n') >= 0 || v.indexOf('\r') >= 0 || v.length > 100) {
+          e.preventDefault();
+          document.getElementById('manualPaste').value = v;
+          self.value = '';
+          parseManualPaste(v);
+        }
+      }, 10);
+    });
+  });
 };
 
 function loadConfigs() {
@@ -622,13 +640,18 @@ function cleanVal(s) {
 }
 
 function extractVal(line) {
-  var m = line.match(/^[\w._-]+[:=]\s*(\S.*)$/i);
+  var m = line.match(/^[\w._-]+\s*[:=]\s*(\S.*)$/i);
   if (m) return cleanVal(m[1]);
   return cleanVal(line);
 }
 
 function isUrl(s) {
   return /^https?:\/\/[\w.\-]+/.test(s);
+}
+
+function extractUrlFromLine(s) {
+  var m = s.match(/https?:\/\/[^\s"'`,\]]+/);
+  return m ? m[0].replace(/\/+$/, '') : '';
 }
 
 function isKey(s) {
@@ -695,6 +718,17 @@ function parseManualPaste(text) {
     if (!raw) continue;
     if (/^#{2,}\s/.test(raw) || /^[-=]{3,}$/.test(raw) || /^#+\s*={3,}/.test(raw)) continue;
     if (/^(#|\/\/)\s*$/.test(raw)) continue;
+    // Skip section headers like "=== 智谱AI ==="
+    if (/^=/.test(raw) && /=\s*$/.test(raw)) continue;
+
+    // 1) URL: 优先用 extractUrlFromLine 直接从原始行提取 https://...
+    var extractedUrl = extractUrlFromLine(raw);
+    if (extractedUrl && !foundUrl) {
+      foundUrl = extractedUrl;
+      candidates.urls.push(extractedUrl);
+      continue;
+    }
+    if (extractedUrl) { candidates.urls.push(extractedUrl); continue; }
 
     var cleaned = cleanVal(raw);
     if (!cleaned) continue;
@@ -702,24 +736,28 @@ function parseManualPaste(text) {
     var val = extractVal(cleaned);
     if (!val) continue;
 
-    if (isUrl(val)) {
-      if (!foundUrl) foundUrl = val.replace(/\/+$/, '');
-      candidates.urls.push(val);
+    // 2) Key: 检测已知 key 前缀或 key= 标记行
+    if (!foundKey) {
+      if (isKey(val)) { foundKey = val; candidates.keys.push(val); continue; }
+      if (lineHasKeyToken(cleaned)) {
+        var kv = extractVal(cleaned);
+        if (kv && isKey(kv)) { foundKey = kv; candidates.keys.push(kv); continue; }
+      }
     }
 
+    // 3) Model: 检测模型名
+    if (!foundModel) {
+      if (isModel(val)) { foundModel = val; candidates.models.push(val); continue; }
+      if (lineHasModelToken(cleaned)) {
+        var mv = extractVal(cleaned);
+        if (mv && isModel(mv)) { foundModel = mv; candidates.models.push(mv); continue; }
+      }
+    }
+
+    // 4) baseUrl hint
     if (!baseUrlHint && lineHasUrlToken(cleaned)) {
       var bv = extractVal(cleaned);
       if (bv && !isUrl(bv)) baseUrlHint = bv;
-    }
-
-    if (!foundKey && lineHasKeyToken(cleaned)) {
-      var kv = extractVal(cleaned);
-      if (kv && isKey(kv)) { foundKey = kv; candidates.keys.push(kv); }
-    }
-
-    if (!foundModel && lineHasModelToken(cleaned)) {
-      var mv = extractVal(cleaned);
-      if (mv && isModel(mv)) { foundModel = mv; candidates.models.push(mv); }
     }
   }
 
@@ -828,7 +866,14 @@ function doManualPasteTest() {
   var url = document.getElementById('manualUrl').value.trim();
   var model = document.getElementById('manualModel').value.trim();
   var key = document.getElementById('manualKey').value.trim();
-  if (!url || !model || !key) { alert('未识别到完整信息，请检查或手动填写'); return; }
+  var missing = [];
+  if (!url) missing.push('API 地址');
+  if (!model) missing.push('模型名称');
+  if (!key) missing.push('API Key');
+  if (missing.length) {
+    alert('未识别到: ' + missing.join('、') + '\n\n请确认粘贴内容包含:\n1. https:// 开头的 API 地址\n2. API Key（sk- 或其他前缀）\n3. 模型名称');
+    return;
+  }
   doManualTest();
 }
 
