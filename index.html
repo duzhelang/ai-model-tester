@@ -359,13 +359,13 @@ function renderProviderGrid() {
 function renderQuickModels() {
   var el = document.getElementById('manualResult');
   if (!el) return;
-  var h = '<div class="card"><div class="collapse-toggle" onclick="this.classList.toggle(\'open\');this.nextElementSibling.classList.toggle(\'open\')"><span>常用模型快速选择</span><span class="arrow">&#9654;</span></div><div class="collapse-body"><div class="btn-row">';
+  var h = '<div class="card"><div class="card-title" style="cursor:pointer" onclick="var b=this.nextElementSibling,q=this.querySelector(\'.quick-toggle\');if(b.style.maxHeight){b.style.maxHeight=\'\';q.textContent=\'展开\'}else{b.style.maxHeight=\'none\';q.textContent=\'收起\'}">常用模型快速选择 <span class="quick-toggle" style="font-size:11px;color:#667eea;font-weight:400">展开</span></div><div class="btn-row" style="max-height:76px;overflow:hidden;transition:max-height .3s">';
   configs.forEach(function(c) {
     c.models.forEach(function(m) {
       h += '<button class="btn btn-secondary btn-sm" onclick="fillManual(\'' + esc(c.url) + '\',\'' + esc(m.id) + '\',\'' + esc(c.key) + '\')">' + esc(m.id) + '</button>';
     });
   });
-  h += '</div></div></div>';
+  h += '</div></div>';
   el.innerHTML = h;
 }
 
