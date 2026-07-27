@@ -188,7 +188,7 @@ body { font-family: "Microsoft YaHei", sans-serif; background: #f5f7fa; min-heig
         </div>
         <div class="form-group">
           <label>超时 (秒)</label>
-          <input type="number" id="manualTimeout" value="15" min="5" max="120">
+          <input type="number" id="manualTimeout" value="30" min="5" max="120">
         </div>
       </div>
       <div class="form-group">
@@ -537,7 +537,7 @@ function doManualTest() {
   var url = document.getElementById('manualUrl').value.trim();
   var model = document.getElementById('manualModel').value.trim();
   var key = document.getElementById('manualKey').value.trim();
-  var timeout = parseInt(document.getElementById('manualTimeout').value) || 15;
+  var timeout = parseInt(document.getElementById('manualTimeout').value) || 30;
   if (!url || !model || !key) { alert('请填写所有字段'); return; }
   var btn = document.getElementById('manualTestBtn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>测试中...';

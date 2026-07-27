@@ -101,6 +101,33 @@ def find_available_port():
     return None
 
 
+# ==================== 代理检测 ====================
+def detect_proxy():
+    """检测系统代理是否可用，不可用则返回空（直连）"""
+    proxy = os.environ.get("HTTP_PROXY") or os.environ.get("http_proxy") or os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
+    if not proxy:
+        return {}
+    try:
+        from urllib.parse import urlparse
+        u = urlparse(proxy)
+        host = u.hostname
+        port = u.port
+        if host and port:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(0.5)
+            try:
+                s.connect((host, port))
+                s.close()
+                return {"http": proxy, "https": proxy}
+            except Exception:
+                return {}
+    except Exception:
+        pass
+    return {}
+
+PROXIES = detect_proxy()
+
+
 # ==================== HTTP Handler ====================
 class Handler(http.server.BaseHTTPRequestHandler):
 
@@ -148,7 +175,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         url = params.get("url", "")
         model = params.get("model", "")
         key = params.get("key", "")
-        timeout = int(params.get("timeout", 15))
+        timeout = int(params.get("timeout", 30))
 
         result = {
             "url": url, "model": model, "status": "error",
@@ -174,7 +201,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         t0 = time.time()
         try:
-            resp = req.post(url, headers=headers, json=payload, timeout=timeout)
+            resp = req.post(url, headers=headers, json=payload, timeout=timeout, proxies=PROXIES)
             result["response_time"] = int((time.time() - t0) * 1000)
             result["status_code"] = resp.status_code
 
