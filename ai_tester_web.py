@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""AI 模型连通性测试工具 - 网页版"""
+"""AI 模型连通性测试工具 - 网页版（优化启动速度 + 防重复启动 + exe 支持）"""
 
 import http.server
 import json
@@ -7,12 +7,101 @@ import threading
 import webbrowser
 import os
 import sys
-import requests
+import socket
 import time
+import tempfile
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+# ==================== 资源路径（兼容 PyInstaller） ====================
+if getattr(sys, 'frozen', False):
+    SCRIPT_DIR = os.path.dirname(sys.executable)
+    BUNDLE_DIR = sys._MEIPASS
+else:
+    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+    BUNDLE_DIR = SCRIPT_DIR
 
 
+def resource_path(filename):
+    """优先从 exe 同级目录读取（用户可覆盖），否则从打包资源读取"""
+    local = os.path.join(SCRIPT_DIR, filename)
+    if os.path.exists(local):
+        return local
+    bundled = os.path.join(BUNDLE_DIR, filename)
+    if os.path.exists(bundled):
+        return bundled
+    return local
+
+
+# ==================== 锁文件（防重复启动） ====================
+LOCK_FILE = os.path.join(tempfile.gettempdir(), "ai_model_tester.lock")
+
+
+def write_lock(port):
+    try:
+        with open(LOCK_FILE, "w") as f:
+            f.write("%d\n%d" % (port, os.getpid()))
+    except Exception:
+        pass
+
+
+def read_lock():
+    try:
+        with open(LOCK_FILE, "r") as f:
+            lines = f.read().strip().split("\n")
+            return int(lines[0]), int(lines[1]) if len(lines) > 1 else 0
+    except Exception:
+        return None, None
+
+
+def clear_lock():
+    try:
+        os.remove(LOCK_FILE)
+    except Exception:
+        pass
+
+
+def is_process_alive(pid):
+    if pid <= 0:
+        return False
+    try:
+        if sys.platform == "win32":
+            import ctypes
+            kernel32 = ctypes.windll.kernel32
+            handle = kernel32.OpenProcess(0x1000, False, pid)
+            if handle:
+                kernel32.CloseHandle(handle)
+                return True
+        else:
+            os.kill(pid, 0)
+        return False
+    except Exception:
+        return False
+
+
+def is_port_listening(port):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(0.3)
+        return s.connect_ex(("127.0.0.1", port)) == 0
+
+
+def check_existing():
+    """快速检测已有实例：先查锁文件，再验证端口"""
+    port, pid = read_lock()
+    if port and is_port_listening(port):
+        return port
+    for p in range(8765, 8770):
+        if p != port and is_port_listening(p):
+            return p
+    return None
+
+
+def find_available_port():
+    for port in range(8765, 8800):
+        if not is_port_listening(port):
+            return port
+    return None
+
+
+# ==================== HTTP Handler ====================
 class Handler(http.server.BaseHTTPRequestHandler):
 
     def log_message(self, fmt, *args):
@@ -20,34 +109,30 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/" or self.path == "/index.html":
-            fpath = os.path.join(SCRIPT_DIR, "index.html")
-            try:
-                with open(fpath, "r", encoding="utf-8") as f:
-                    content = f.read()
-                self.send_response(200)
-                self.send_header("Content-Type", "text/html; charset=utf-8")
-                self.send_header("Cache-Control", "no-cache")
-                self.end_headers()
-                self.wfile.write(content.encode("utf-8"))
-            except FileNotFoundError:
-                self.send_error(404, "index.html not found")
+            self._serve_file("index.html", "text/html; charset=utf-8")
         elif self.path == "/keys.js":
-            fpath = os.path.join(SCRIPT_DIR, "keys.js")
-            try:
-                with open(fpath, "r", encoding="utf-8") as f:
-                    content = f.read()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/javascript; charset=utf-8")
-                self.send_header("Cache-Control", "no-cache")
-                self.end_headers()
-                self.wfile.write(content.encode("utf-8"))
-            except FileNotFoundError:
-                self.send_response(200)
-                self.send_header("Content-Type", "application/javascript; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(b"var LOCAL_API_KEYS = {};")
+            self._serve_file("keys.js", "application/javascript; charset=utf-8",
+                             fallback=b"var LOCAL_API_KEYS = {};")
         else:
             self.send_error(404)
+
+    def _serve_file(self, filename, content_type, fallback=None):
+        fpath = resource_path(filename)
+        try:
+            with open(fpath, "r", encoding="utf-8") as f:
+                content = f.read()
+            data = content.encode("utf-8")
+        except FileNotFoundError:
+            if fallback:
+                data = fallback
+            else:
+                self.send_error(404, filename + " not found")
+                return
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
 
     def do_POST(self):
         if self.path == "/api/test":
@@ -65,35 +150,31 @@ class Handler(http.server.BaseHTTPRequestHandler):
         key = params.get("key", "")
         timeout = int(params.get("timeout", 15))
 
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + key,
+        result = {
+            "url": url, "model": model, "status": "error",
+            "response_time": 0, "status_code": None,
+            "error": None, "error_type": None, "suggestion": None, "preview": None,
         }
+
+        try:
+            import requests as req
+        except ImportError:
+            result["error"] = "requests 库未安装"
+            result["error_type"] = "依赖缺失"
+            result["suggestion"] = "运行 pip install requests"
+            self._send_json(result)
+            return
+
+        headers = {"Content-Type": "application/json", "Authorization": "Bearer " + key}
         if "openrouter.ai" in url:
             headers["HTTP-Referer"] = "https://ai-tester.local"
             headers["X-Title"] = "AI Model Tester"
 
-        payload = {
-            "model": model,
-            "messages": [{"role": "user", "content": "hi"}],
-            "max_tokens": 30,
-        }
-
-        result = {
-            "url": url,
-            "model": model,
-            "status": "error",
-            "response_time": 0,
-            "status_code": None,
-            "error": None,
-            "error_type": None,
-            "suggestion": None,
-            "preview": None,
-        }
+        payload = {"model": model, "messages": [{"role": "user", "content": "hi"}], "max_tokens": 30}
 
         t0 = time.time()
         try:
-            resp = requests.post(url, headers=headers, json=payload, timeout=timeout)
+            resp = req.post(url, headers=headers, json=payload, timeout=timeout)
             result["response_time"] = int((time.time() - t0) * 1000)
             result["status_code"] = resp.status_code
 
@@ -114,28 +195,22 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 except Exception:
                     detail = resp.text[:200]
                 result["error"] = "HTTP %d: %s" % (resp.status_code, detail)
-                if resp.status_code == 401:
-                    result["error_type"] = "认证失败"
-                    result["suggestion"] = "请检查 API Key 是否正确或已过期"
-                elif resp.status_code == 403:
-                    result["error_type"] = "权限不足"
-                    result["suggestion"] = "API Key 可能无权访问该模型"
-                elif resp.status_code == 404:
-                    result["error_type"] = "模型不存在"
-                    result["suggestion"] = "模型名称错误或已下线"
-                elif resp.status_code == 429:
-                    result["error_type"] = "频率限制"
-                    result["suggestion"] = "稍后再试"
+                err_map = {401: ("认证失败", "请检查 API Key 是否正确或已过期"),
+                           403: ("权限不足", "API Key 可能无权访问该模型"),
+                           404: ("模型不存在", "模型名称错误或已下线"),
+                           429: ("频率限制", "稍后再试")}
+                if resp.status_code in err_map:
+                    result["error_type"], result["suggestion"] = err_map[resp.status_code]
                 else:
                     result["error_type"] = "HTTP %d" % resp.status_code
 
-        except requests.exceptions.Timeout:
+        except req.exceptions.Timeout:
             result["response_time"] = int((time.time() - t0) * 1000)
             result["error"] = "请求超时 (%d秒)" % timeout
             result["error_type"] = "网络超时"
             result["suggestion"] = "网络慢或该服务在国内需代理访问"
 
-        except requests.exceptions.ConnectionError as e:
+        except req.exceptions.ConnectionError as e:
             result["response_time"] = int((time.time() - t0) * 1000)
             es = str(e)
             if "NameResolutionError" in es or "getaddrinfo" in es:
@@ -160,9 +235,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             result["error"] = str(e)[:300]
             result["error_type"] = "未知错误"
 
-        self.send_json(result)
+        self._send_json(result)
 
-    def send_json(self, data):
+    def _send_json(self, data):
         body = json.dumps(data, ensure_ascii=False).encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -171,40 +246,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(body)
 
 
-def is_port_in_use(port):
-    import socket
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        return s.connect_ex(("127.0.0.1", port)) == 0
-
-
-def is_our_server(port):
-    try:
-        resp = requests.get("http://127.0.0.1:%d" % port, timeout=2)
-        return resp.status_code == 200 and "AI 模型连通性测试" in resp.text
-    except Exception:
-        return False
-
-
-def find_available_port(start=8765, end=8799):
-    import socket
-    for port in range(start, end + 1):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            if s.connect_ex(("127.0.0.1", port)) != 0:
-                return port
-    return None
-
-
-def find_existing_server(start=8765, end=8799):
-    for port in range(start, end + 1):
-        if is_port_in_use(port) and is_our_server(port):
-            return port
-    return None
-
-
+# ==================== 主入口 ====================
 def main():
-    base_port = 8765
-
-    existing = find_existing_server(base_port, 8799)
+    existing = check_existing()
     if existing is not None:
         url = "http://localhost:%d" % existing
         print("检测到工具已在运行，正在打开浏览器...")
@@ -212,23 +256,26 @@ def main():
         webbrowser.open(url)
         sys.exit(0)
 
-    port = find_available_port(base_port, 8799)
+    port = find_available_port()
     if port is None:
-        print("所有端口 %d-%d 均被占用" % (base_port, 8799))
+        print("所有端口 8765-8799 均被占用")
         sys.exit(1)
 
-    url = "http://localhost:%d" % port
+    write_lock(port)
+
     server = http.server.ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    url = "http://localhost:%d" % port
     print("AI 模型连通性测试工具")
     print("访问: " + url)
-    if port != base_port:
-        print("默认端口 %d 被占用，已自动切换到 %d" % (base_port, port))
-    print("Ctrl+C 停止")
-    threading.Timer(0.5, lambda: webbrowser.open(url)).start()
+    if port != 8765:
+        print("默认端口 8765 被占用，已自动切换到 %d" % port)
+    threading.Timer(0.3, lambda: webbrowser.open(url)).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        print("\n已停止")
+        pass
+    finally:
+        clear_lock()
         server.server_close()
 
 
